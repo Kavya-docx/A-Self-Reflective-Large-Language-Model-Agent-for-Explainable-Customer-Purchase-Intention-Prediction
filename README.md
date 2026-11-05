@@ -55,6 +55,15 @@ To train explicitly:
 python scripts/train.py --samples 5000
 ```
 
+Generate the technical project report:
+
+```bash
+pip install -e '.[report]'
+python scripts/generate_report.py
+```
+
+The PDF is written to `docs/purchase_intention_project_report.pdf`.
+
 ## API
 
 - `GET /health` - service and model status

@@ -1,16 +1,55 @@
 """Lightweight Vercel entrypoint for the hosted inference experience."""
 
 import math
+import base64
+import hashlib
+import hmac
+import os
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[1]
 app = FastAPI(title="Self-Reflective Purchase Intention Agent", version="0.1.0")
+APP_USERNAME = os.getenv("APP_USERNAME", "admin")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "intentlens-demo")
+SESSION_SECRET = os.getenv("SESSION_SECRET", "local-development-only-secret")
+SESSION_COOKIE = "intentlens_session"
+SESSION_MAX_AGE = 8 * 60 * 60
+
+
+class LoginRequest(BaseModel):
+	username: str
+	password: str
+
+
+def make_session(username: str) -> str:
+	payload = f"{username}:{int(time.time())}".encode()
+	signature = hmac.new(SESSION_SECRET.encode(), payload, hashlib.sha256).digest()
+	return base64.urlsafe_b64encode(payload + b"." + signature).decode()
+
+
+def valid_session(token: str | None) -> bool:
+	if not token:
+		return False
+	try:
+		decoded = base64.urlsafe_b64decode(token.encode())
+		payload, signature = decoded.rsplit(b".", 1)
+		username, issued = payload.decode().rsplit(":", 1)
+		expected = hmac.new(SESSION_SECRET.encode(), payload, hashlib.sha256).digest()
+		return hmac.compare_digest(signature, expected) and username == APP_USERNAME and time.time() - int(issued) < SESSION_MAX_AGE
+	except (ValueError, TypeError):
+		return False
+
+
+def require_session(request: Request) -> None:
+	if not valid_session(request.cookies.get(SESSION_COOKIE)):
+		raise HTTPException(status_code=401, detail="Authentication required")
 
 
 class CustomerEvent(BaseModel):
@@ -49,13 +88,34 @@ def health():
 	return {"status": "ok", "model_ready": True, "runtime": "vercel-lightweight-inference"}
 
 
+@app.get("/session")
+def session(request: Request):
+	return {"authenticated": valid_session(request.cookies.get(SESSION_COOKIE))}
+
+
+@app.post("/login")
+def login(credentials: LoginRequest, response: Response):
+	if not (hmac.compare_digest(credentials.username, APP_USERNAME) and hmac.compare_digest(credentials.password, APP_PASSWORD)):
+		raise HTTPException(status_code=401, detail="Invalid username or password")
+	response.set_cookie(SESSION_COOKIE, make_session(APP_USERNAME), max_age=SESSION_MAX_AGE, httponly=True, samesite="lax", secure=bool(os.getenv("VERCEL")))
+	return {"authenticated": True}
+
+
+@app.post("/logout")
+def logout(response: Response):
+	response.delete_cookie(SESSION_COOKIE)
+	return {"authenticated": False}
+
+
 @app.get("/model/metrics")
-def metrics():
+def metrics(request: Request):
+	require_session(request)
 	return {"metrics": {"roc_auc": 0.7949, "accuracy": 0.7375, "brier_score": 0.1801, "source": "local validation run"}, "runtime": "lightweight inference adapter"}
 
 
 @app.post("/predict")
-def predict(event: CustomerEvent):
+def predict(event: CustomerEvent, request: Request):
+	require_session(request)
 	values = event.model_dump()
 	probability, factors = score(values)
 	positive = [{"feature": item["feature"], "impact": round(item["impact"], 4), "direction": "increases"} for item in factors if item["impact"] > 0]

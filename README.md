@@ -36,6 +36,19 @@ npx vercel --prod
 
 Vercel functions use ephemeral `/tmp` storage, so prediction audit records are not durable there. Use a hosted open-source-compatible PostgreSQL service or self-hosted database for production persistence.
 
+### Credentials
+
+The hosted dashboard is protected by a signed HTTP-only session cookie. Configure these Vercel Production environment variables before sharing the app:
+
+```bash
+vercel env add APP_USERNAME production
+vercel env add APP_PASSWORD production
+vercel env add SESSION_SECRET production
+vercel --prod
+```
+
+For local development, the fallback credentials are `admin` / `intentlens-demo`. Set the same three environment variables locally to override them. Never commit passwords or session secrets to Git.
+
 To train explicitly:
 
 ```bash

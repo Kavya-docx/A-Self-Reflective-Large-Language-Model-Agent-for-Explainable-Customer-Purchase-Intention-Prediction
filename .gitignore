@@ -1,3 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+data/*.db
+models/*.joblib
+models/*.json
+.python-version
+uv.lock
+_uv/
+build/
+purchase_intention.db
+purchase_model.joblib
+purchase_model.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -218,3 +232,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.vercel

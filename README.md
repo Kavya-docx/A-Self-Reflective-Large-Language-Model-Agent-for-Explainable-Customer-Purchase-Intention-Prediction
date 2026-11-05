@@ -73,6 +73,14 @@ python scripts/generate_ieee_paper.py
 
 The paper is written to `docs/ieee_purchase_intention_paper.pdf`.
 
+Generate the IEEE 2026 project report checklist:
+
+```bash
+python scripts/generate_ieee_checklist.py
+```
+
+The checklist is written to `docs/ieee_2026_purchase_intention_checklist.pdf`.
+
 ## API
 
 - `GET /health` - service and model status

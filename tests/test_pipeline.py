@@ -30,4 +30,5 @@ def test_api_predict():
     response = TestClient(app).post("/predict", json=sample())
     assert response.status_code == 200
     body = response.json()
-    assert {"probability", "explanation", "reflection", "counterfactual"} <= body.keys()
+    assert {"probability", "explanation", "reflection", "counterfactual", "outputs"} <= body.keys()
+    assert [output["type"] for output in body["outputs"]] == ["prediction", "evidence", "reflection"]

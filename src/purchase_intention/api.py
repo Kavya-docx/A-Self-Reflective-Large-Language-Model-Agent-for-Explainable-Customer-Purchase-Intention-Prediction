@@ -56,6 +56,11 @@ def predict(event: CustomerEvent):
     probability = current.predict_probability(values)
     explanation = explain_prediction(current, values, probability)
     reflection = reflect(values, probability, explanation)
-    result = {"probability": round(probability, 4), "risk_band": "high" if probability >= .7 else "medium" if probability >= .35 else "low", "explanation": explanation, "reflection": reflection, "counterfactual": counterfactual(values, probability)}
+    next_action = counterfactual(values, probability)
+    result = {"probability": round(probability, 4), "risk_band": "high" if probability >= .7 else "medium" if probability >= .35 else "low", "explanation": explanation, "reflection": reflection, "counterfactual": next_action, "outputs": [
+        {"type": "prediction", "title": "Purchase intention", "probability": round(probability, 4), "risk_band": "high" if probability >= .7 else "medium" if probability >= .35 else "low"},
+        {"type": "evidence", "title": "Decision evidence", "positive_factors": explanation["positive_factors"], "negative_factors": explanation["negative_factors"]},
+        {"type": "reflection", "title": "Self-reflection", "confidence": reflection["confidence"], "review_recommended": reflection["review_recommended"], "next_action": next_action},
+    ]}
     store.record(values, result)
     return result

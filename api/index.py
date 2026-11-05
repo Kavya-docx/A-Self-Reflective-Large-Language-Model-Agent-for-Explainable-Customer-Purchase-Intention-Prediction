@@ -122,12 +122,14 @@ def predict(event: CustomerEvent, request: Request):
 	negative = [{"feature": item["feature"], "impact": round(abs(item["impact"]), 4), "direction": "decreases"} for item in factors if item["impact"] < 0]
 	confidence = "high" if abs(probability - .5) >= .3 else "medium" if abs(probability - .5) >= .12 else "low"
 	decision = "likely_purchase" if probability >= .5 else "unlikely_purchase"
+	next_action = {"message": "Already above the purchase threshold; preserve the current experience." if probability >= .5 else "A small increase in high-intent engagement could move this case toward purchase.", "changes": [] if probability >= .5 else [{"feature": "cart_additions", "suggested_change": "increase by 1 (within observed limits)"}]}
 	result = {
 		"probability": round(probability, 4),
 		"risk_band": "high" if probability >= .7 else "medium" if probability >= .35 else "low",
 		"explanation": {"positive_factors": positive[:5], "negative_factors": negative[:5], "top_factors": (positive + negative)[:5], "probability": round(probability, 4)},
 		"reflection": {"decision": decision, "confidence": confidence, "summary": "The observed behaviour suggests meaningful purchase intent." if probability >= .5 else "The observed behaviour does not yet show strong purchase intent.", "checks": {"input_quality": True, "confidence": confidence != "low", "explanation_available": bool(factors), "boundary_stability": abs(probability - .5) >= .05}, "issues": [], "review_recommended": confidence == "low"},
-		"counterfactual": {"message": "Already above the purchase threshold; preserve the current experience." if probability >= .5 else "A small increase in high-intent engagement could move this case toward purchase.", "changes": [] if probability >= .5 else [{"feature": "cart_additions", "suggested_change": "increase by 1 (within observed limits)"}]},
+		"counterfactual": next_action,
+		"outputs": [{"type": "prediction", "title": "Purchase intention", "probability": round(probability, 4), "risk_band": "high" if probability >= .7 else "medium" if probability >= .35 else "low"}, {"type": "evidence", "title": "Decision evidence", "positive_factors": positive[:5], "negative_factors": negative[:5]}, {"type": "reflection", "title": "Self-reflection", "confidence": confidence, "review_recommended": confidence == "low", "next_action": next_action}],
 	}
 	with sqlite3.connect("/tmp/purchase_intention.db") as connection:
 		connection.execute("CREATE TABLE IF NOT EXISTS predictions (created_at TEXT, input_json TEXT, result_json TEXT)")

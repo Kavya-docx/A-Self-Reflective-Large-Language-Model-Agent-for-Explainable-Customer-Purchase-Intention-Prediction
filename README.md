@@ -64,6 +64,15 @@ python scripts/generate_report.py
 
 The PDF is written to `docs/purchase_intention_project_report.pdf`.
 
+Generate the IEEE-style paper:
+
+```bash
+pip install -e '.[report]'
+python scripts/generate_ieee_paper.py
+```
+
+The paper is written to `docs/ieee_purchase_intention_paper.pdf`.
+
 ## API
 
 - `GET /health` - service and model status
